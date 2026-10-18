@@ -1,0 +1,4 @@
+Counts your farmed profession loot and shows its auction house value via TSM.
+
+Short version (if the field is limited):
+Track farmed loot and its TSM gold value
