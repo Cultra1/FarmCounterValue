@@ -17,5 +17,6 @@
 ## Version: @project-version@
 ## OptionalDeps: TradeSkillMaster
 ## SavedVariables: FarmCounterValueDB
+## X-Curse-Project-ID: 1752360
 
 FarmCounterValue.lua
