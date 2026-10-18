@@ -1,4 +1,4 @@
--- Farm Counter
+-- Farm Counter & Value
 -- Lightweight profession loot tracker (fishing, gathering, prospecting, disenchanting, ...)
 -- with Session + Global History views and optional TradeSkillMaster auction values.
 -- Updated for WoW: Midnight (12.1.x)
@@ -9,7 +9,7 @@ local ADDON_VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAd
 if ADDON_VERSION:find("@", 1, true) then
     ADDON_VERSION = "dev"
 end
--- Structure version of FarmCounterDB, for future migrations.
+-- Structure version of FarmCounterValueDB, for future migrations.
 local DB_VERSION = 1
 
 local DEFAULT_PRICE_SOURCE = "DBMarket"
@@ -82,7 +82,7 @@ local ITEM_CATEGORY_OVERRIDES = {
 -- -----------------------------------------------------------------------------
 -- SavedVariables
 -- -----------------------------------------------------------------------------
-FarmCounterDB = FarmCounterDB or {}
+FarmCounterValueDB = FarmCounterValueDB or {}
 
 local function NewSession(state)
     return {
@@ -96,65 +96,65 @@ local function NewSession(state)
 end
 
 local function ApplyDefaults()
-    FarmCounterDB.version = FarmCounterDB.version or ADDON_VERSION
+    FarmCounterValueDB.version = FarmCounterValueDB.version or ADDON_VERSION
 
-    FarmCounterDB.settings = FarmCounterDB.settings or {}
-    if FarmCounterDB.settings.mode ~= "session" and FarmCounterDB.settings.mode ~= "history" then
-        FarmCounterDB.settings.mode = "session"
+    FarmCounterValueDB.settings = FarmCounterValueDB.settings or {}
+    if FarmCounterValueDB.settings.mode ~= "session" and FarmCounterValueDB.settings.mode ~= "history" then
+        FarmCounterValueDB.settings.mode = "session"
     end
     -- "hidden" means the user explicitly hid the window. If nil/false, the addon may show the
     -- window automatically when it has data to display.
-    if FarmCounterDB.settings.hidden == nil then
-        FarmCounterDB.settings.hidden = false
+    if FarmCounterValueDB.settings.hidden == nil then
+        FarmCounterValueDB.settings.hidden = false
     end
-    if FarmCounterDB.settings.playRareSound == nil then
-        FarmCounterDB.settings.playRareSound = true
+    if FarmCounterValueDB.settings.playRareSound == nil then
+        FarmCounterValueDB.settings.playRareSound = true
     end
-    if FarmCounterDB.settings.playBlueSound == nil then
-        FarmCounterDB.settings.playBlueSound = true
+    if FarmCounterValueDB.settings.playBlueSound == nil then
+        FarmCounterValueDB.settings.playBlueSound = true
     end
-    if type(FarmCounterDB.settings.priceSource) ~= "string" or FarmCounterDB.settings.priceSource == "" then
-        FarmCounterDB.settings.priceSource = DEFAULT_PRICE_SOURCE
+    if type(FarmCounterValueDB.settings.priceSource) ~= "string" or FarmCounterValueDB.settings.priceSource == "" then
+        FarmCounterValueDB.settings.priceSource = DEFAULT_PRICE_SOURCE
     end
     -- Count everything looted from a fishing cast (junk, treasures, ...).
-    if FarmCounterDB.settings.countAllFishingLoot == nil then
-        FarmCounterDB.settings.countAllFishingLoot = true
+    if FarmCounterValueDB.settings.countAllFishingLoot == nil then
+        FarmCounterValueDB.settings.countAllFishingLoot = true
     end
-    -- Auto sessions (no /farmcounter start) reset when you loot in a new zone.
-    if FarmCounterDB.settings.zoneReset == nil then
-        FarmCounterDB.settings.zoneReset = true
+    -- Auto sessions (no /fcv start) reset when you loot in a new zone.
+    if FarmCounterValueDB.settings.zoneReset == nil then
+        FarmCounterValueDB.settings.zoneReset = true
     end
     -- Hide the window after a while without counted loot; it comes back with the next counted loot.
-    if FarmCounterDB.settings.autoHide == nil then
-        FarmCounterDB.settings.autoHide = false
+    if FarmCounterValueDB.settings.autoHide == nil then
+        FarmCounterValueDB.settings.autoHide = false
     end
-    if type(FarmCounterDB.settings.autoHideMinutes) ~= "number" then
-        FarmCounterDB.settings.autoHideMinutes = DEFAULT_AUTO_HIDE_MINUTES
+    if type(FarmCounterValueDB.settings.autoHideMinutes) ~= "number" then
+        FarmCounterValueDB.settings.autoHideMinutes = DEFAULT_AUTO_HIDE_MINUTES
     end
-    FarmCounterDB.settings.categories = FarmCounterDB.settings.categories or {}
+    FarmCounterValueDB.settings.categories = FarmCounterValueDB.settings.categories or {}
     -- Store every category explicitly (true/false) so the options checkboxes can bind to it.
     for _, category in ipairs(CATEGORY_ORDER) do
-        FarmCounterDB.settings.categories[category] = FarmCounterDB.settings.categories[category] ~= false
+        FarmCounterValueDB.settings.categories[category] = FarmCounterValueDB.settings.categories[category] ~= false
     end
 
-    FarmCounterDB.historyData = FarmCounterDB.historyData or {}
-    FarmCounterDB.historyOrder = FarmCounterDB.historyOrder or {}
-    FarmCounterDB.sessionHistory = FarmCounterDB.sessionHistory or {}
+    FarmCounterValueDB.historyData = FarmCounterValueDB.historyData or {}
+    FarmCounterValueDB.historyOrder = FarmCounterValueDB.historyOrder or {}
+    FarmCounterValueDB.sessionHistory = FarmCounterValueDB.sessionHistory or {}
 
-    if type(FarmCounterDB.session) ~= "table"
-        or type(FarmCounterDB.session.data) ~= "table"
-        or type(FarmCounterDB.session.order) ~= "table" then
-        FarmCounterDB.session = NewSession("auto")
+    if type(FarmCounterValueDB.session) ~= "table"
+        or type(FarmCounterValueDB.session.data) ~= "table"
+        or type(FarmCounterValueDB.session.order) ~= "table" then
+        FarmCounterValueDB.session = NewSession("auto")
     end
 
-    FarmCounterDB.frame = FarmCounterDB.frame or {}
+    FarmCounterValueDB.frame = FarmCounterValueDB.frame or {}
 end
 
 local function Print(msg)
     if DEFAULT_CHAT_FRAME and DEFAULT_CHAT_FRAME.AddMessage then
-        DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99FarmCounter|r: " .. tostring(msg))
+        DEFAULT_CHAT_FRAME:AddMessage("|cff33ff99FarmCounterValue|r: " .. tostring(msg))
     else
-        print("FarmCounter: " .. tostring(msg))
+        print("FarmCounterValue: " .. tostring(msg))
     end
 end
 
@@ -215,14 +215,14 @@ end
 local lastRareSoundTime = 0
 
 local function PlayRareLootSound(maxQuality)
-    if not FarmCounterDB.settings or not FarmCounterDB.settings.playRareSound then
+    if not FarmCounterValueDB.settings or not FarmCounterValueDB.settings.playRareSound then
         return
     end
     if not PlaySound then
         return
     end
     -- Rare (blue) items can be muted separately; epic and better always alert.
-    if maxQuality < 4 and not FarmCounterDB.settings.playBlueSound then
+    if maxQuality < 4 and not FarmCounterValueDB.settings.playBlueSound then
         return
     end
 
@@ -274,7 +274,7 @@ local function FormatDuration(seconds)
 end
 
 local function IsCategoryEnabled(category)
-    return FarmCounterDB.settings.categories[category] ~= false
+    return FarmCounterValueDB.settings.categories[category] ~= false
 end
 
 local function GetItemInfoInstantCompat(item)
@@ -303,7 +303,7 @@ local function ClassifyItem(itemID, classID, subclassID, isFishing)
     if category == "cooking" and isFishing then
         category = "fish"
     end
-    if not category and isFishing and FarmCounterDB.settings.countAllFishingLoot then
+    if not category and isFishing and FarmCounterValueDB.settings.countAllFishingLoot then
         category = "fishing"
     end
 
@@ -369,7 +369,7 @@ end
 -- Session data (saved, separate from the global history)
 -- -----------------------------------------------------------------------------
 local function GetSession()
-    return FarmCounterDB.session
+    return FarmCounterValueDB.session
 end
 
 local function GetSessionDuration(session)
@@ -384,7 +384,7 @@ end
 -- Archived session currently shown in the window (nil = current session).
 local viewedSession = nil
 
--- Moves a finished session into FarmCounterDB.sessionHistory (newest first, max MAX_ARCHIVED_SESSIONS).
+-- Moves a finished session into FarmCounterValueDB.sessionHistory (newest first, max MAX_ARCHIVED_SESSIONS).
 local function ArchiveSession(session)
     if type(session) ~= "table" or not HasAnyCatches(session.data, session.order) then
         return
@@ -393,7 +393,7 @@ local function ArchiveSession(session)
     session.endTime = session.endTime or time()
     session.state = "archived"
 
-    local archive = FarmCounterDB.sessionHistory
+    local archive = FarmCounterValueDB.sessionHistory
     table.insert(archive, 1, session)
     while #archive > MAX_ARCHIVED_SESSIONS do
         local removed = table.remove(archive)
@@ -405,9 +405,9 @@ end
 
 -- Archives the current session and starts a new one.
 local function ReplaceSession(state)
-    ArchiveSession(FarmCounterDB.session)
-    FarmCounterDB.session = NewSession(state)
-    return FarmCounterDB.session
+    ArchiveSession(FarmCounterValueDB.session)
+    FarmCounterValueDB.session = NewSession(state)
+    return FarmCounterValueDB.session
 end
 
 local function GetSessionLabel(session)
@@ -455,7 +455,7 @@ local function IsPriceSourceValid()
         return priceSourceValid
     end
 
-    local source = FarmCounterDB.settings.priceSource or DEFAULT_PRICE_SOURCE
+    local source = FarmCounterValueDB.settings.priceSource or DEFAULT_PRICE_SOURCE
     local ok, isValid, err = pcall(TSM_API.IsCustomPriceValid, source)
     if not ok then
         ReportPriceError(source, nil, isValid)
@@ -494,7 +494,7 @@ local function GetItemPrice(itemString, itemID)
         return cached.value
     end
 
-    local source = FarmCounterDB.settings.priceSource or DEFAULT_PRICE_SOURCE
+    local source = FarmCounterValueDB.settings.priceSource or DEFAULT_PRICE_SOURCE
     local value = QueryPrice(source, itemString)
     if not value and baseItemString and baseItemString ~= itemString then
         value = QueryPrice(source, baseItemString)
@@ -518,7 +518,7 @@ end
 -- -----------------------------------------------------------------------------
 -- UI
 -- -----------------------------------------------------------------------------
-local frame = CreateFrame("Frame", "FarmCounterFrame", UIParent, "BackdropTemplate")
+local frame = CreateFrame("Frame", "FarmCounterValueFrame", UIParent, "BackdropTemplate")
 frame:SetPoint("CENTER")
 frame:SetClampedToScreen(true)
 frame:SetMovable(true)
@@ -538,7 +538,7 @@ frame:SetBackdropColor(0, 0, 0, 0.85)
 frame:SetBackdropBorderColor(0.8, 0.8, 0.8, 0.9)
 
 local function RestoreFramePosition()
-    local p = FarmCounterDB.frame
+    local p = FarmCounterValueDB.frame
     if type(p) ~= "table" then
         return
     end
@@ -556,11 +556,11 @@ end
 
 local function SaveFramePosition()
     local point, _, relPoint, x, y = frame:GetPoint(1)
-    FarmCounterDB.frame = FarmCounterDB.frame or {}
-    FarmCounterDB.frame.point = point
-    FarmCounterDB.frame.relativePoint = relPoint
-    FarmCounterDB.frame.x = x
-    FarmCounterDB.frame.y = y
+    FarmCounterValueDB.frame = FarmCounterValueDB.frame or {}
+    FarmCounterValueDB.frame.point = point
+    FarmCounterValueDB.frame.relativePoint = relPoint
+    FarmCounterValueDB.frame.x = x
+    FarmCounterValueDB.frame.y = y
 end
 
 -- Drag bar (so you can drag by the title area)
@@ -578,17 +578,17 @@ end)
 
 local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 title:SetPoint("CENTER", dragBar, "CENTER", 0, 0)
-title:SetText("Farm Counter")
+title:SetText("Farm Counter & Value")
 
--- Close button (top right): same as /farmcounter hide, the window stays hidden until /farmcounter show.
+-- Close button (top right): same as /fcv hide, the window stays hidden until /fcv show.
 local closeButton = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
 closeButton:SetSize(20, 20)
 closeButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
 closeButton:SetFrameLevel(dragBar:GetFrameLevel() + 2)
 closeButton:SetScript("OnClick", function()
-    FarmCounterDB.settings.hidden = true
+    FarmCounterValueDB.settings.hidden = true
     frame:Hide()
-    Print("Window hidden. Use /farmcounter show to show it again; data keeps tracking in the background.")
+    Print("Window hidden. Use /fcv show to show it again; data keeps tracking in the background.")
 end)
 
 -- View dropdown (top left): current session, previous sessions, history.
@@ -614,11 +614,11 @@ viewButton:SetScript("OnLeave", function()
 end)
 
 local function GetViewLabel()
-    if (FarmCounterDB.settings.mode or "session") == "history" then
+    if (FarmCounterValueDB.settings.mode or "session") == "history" then
         return "History"
     end
     if viewedSession then
-        for i, session in ipairs(FarmCounterDB.sessionHistory) do
+        for i, session in ipairs(FarmCounterValueDB.sessionHistory) do
             if session == viewedSession then
                 return "Previous #" .. i
             end
@@ -793,18 +793,18 @@ local function SetFrameSizeToRows(numRows)
 end
 
 local function GetActiveData()
-    local mode = FarmCounterDB.settings.mode or "session"
+    local mode = FarmCounterValueDB.settings.mode or "session"
 
     UpdateViewButton()
 
+    -- The title stays short; the view is shown by the dropdown, the zone in the footer.
+    title:SetText("Farm Counter & Value")
+
     if mode == "history" then
-        title:SetText("Farm Counter (History)")
-        return FarmCounterDB.historyData, FarmCounterDB.historyOrder
+        return FarmCounterValueDB.historyData, FarmCounterValueDB.historyOrder
     end
 
     local session = viewedSession or GetSession()
-    local zone = session.zone or GetCurrentZoneName()
-    title:SetText("Farm Counter (" .. zone .. ")")
     return session.data, session.order
 end
 
@@ -831,7 +831,7 @@ local lastTotalValue = 0
 local lastMissingPrices = 0
 
 local function UpdateFooter()
-    local mode = FarmCounterDB.settings.mode or "session"
+    local mode = FarmCounterValueDB.settings.mode or "session"
     local session = viewedSession or GetSession()
     local lines = {}
 
@@ -858,12 +858,14 @@ local function UpdateFooter()
         else
             stateText = "Auto"
         end
-        table.insert(lines, "Session: " .. stateText .. " " .. FormatDuration(GetSessionDuration(session)))
+        local zone = session.zone or GetCurrentZoneName()
+        table.insert(lines, "Session: " .. stateText .. " " .. FormatDuration(GetSessionDuration(session))
+            .. "  |cff808080" .. zone .. "|r")
     else
         table.insert(lines, "History: all sessions")
     end
 
-    local source = FarmCounterDB.settings.priceSource or DEFAULT_PRICE_SOURCE
+    local source = FarmCounterValueDB.settings.priceSource or DEFAULT_PRICE_SOURCE
     if not IsTSMAvailable() then
         table.insert(lines, "|cff808080Prices: TSM not loaded|r")
     elseif lastPriceError then
@@ -881,7 +883,7 @@ local lastActivityTime = 0
 local autoHidden = false
 
 -- forceShow:
---   true  -> show window even if there are no catches yet (used for /farmcounter show, /farmcounter history, etc)
+--   true  -> show window even if there are no catches yet (used for /fcv show, /fcv history, etc)
 --   false -> only show automatically when there is data to show and the user has not hidden it
 local function UpdateDisplay(forceShow)
     local data, order = GetActiveData()
@@ -973,7 +975,7 @@ local function UpdateDisplay(forceShow)
 
     SetFrameSizeToRows(math.max(1, #items))
 
-    if FarmCounterDB.settings.hidden then
+    if FarmCounterValueDB.settings.hidden then
         frame:Hide()
         return
     end
@@ -1011,18 +1013,18 @@ local function ScheduleUpdate()
 end
 
 local function SelectView(mode, session)
-    FarmCounterDB.settings.mode = mode
+    FarmCounterValueDB.settings.mode = mode
     viewedSession = session
-    FarmCounterDB.settings.hidden = false
+    FarmCounterValueDB.settings.hidden = false
     UpdateDisplay(true)
 end
 
 local function IsViewSelected(mode, session)
-    return (FarmCounterDB.settings.mode or "session") == mode and viewedSession == session
+    return (FarmCounterValueDB.settings.mode or "session") == mode and viewedSession == session
 end
 
 viewButton:SetScript("OnClick", function(self)
-    local archive = FarmCounterDB.sessionHistory
+    local archive = FarmCounterValueDB.sessionHistory
 
     if MenuUtil and MenuUtil.CreateContextMenu then
         MenuUtil.CreateContextMenu(self, function(_, rootDescription)
@@ -1049,7 +1051,7 @@ viewButton:SetScript("OnClick", function(self)
     end
 
     -- Fallback without the menu API: cycle Current -> previous sessions -> History.
-    if (FarmCounterDB.settings.mode or "session") == "history" then
+    if (FarmCounterValueDB.settings.mode or "session") == "history" then
         SelectView("session", nil)
         return
     end
@@ -1081,7 +1083,7 @@ frame:SetScript("OnUpdate", function(_, elapsed)
     sinceRefresh = sinceRefresh + sinceTick
     sinceTick = 0
 
-    local settings = FarmCounterDB.settings
+    local settings = FarmCounterValueDB.settings
     if settings.autoHide then
         if frame:IsMouseOver() then
             -- Don't hide while you are looking at or using the window.
@@ -1208,10 +1210,10 @@ local function ProcessLootMessage(msg)
     local currentZone = GetCurrentZoneName()
 
     -- Auto sessions reset when you loot in a new zone.
-    if session.state == "auto" and FarmCounterDB.settings.zoneReset
+    if session.state == "auto" and FarmCounterValueDB.settings.zoneReset
         and session.zone and session.zone ~= currentZone then
         ReplaceSession("auto")
-        session = FarmCounterDB.session
+        session = FarmCounterValueDB.session
     end
 
     if session.state ~= "stopped" then
@@ -1219,7 +1221,7 @@ local function ProcessLootMessage(msg)
         session.lastLootTime = time()
         AddCatch(session.data, session.order, itemKey, itemInfo, amount)
     end
-    AddCatch(FarmCounterDB.historyData, FarmCounterDB.historyOrder, itemKey, itemInfo, amount)
+    AddCatch(FarmCounterValueDB.historyData, FarmCounterValueDB.historyOrder, itemKey, itemInfo, amount)
 
     if type(quality) == "number" and quality >= 3 then
         PlayRareLootSound(quality)
@@ -1233,9 +1235,9 @@ local function ProcessLootMessage(msg)
 end
 
 -- -----------------------------------------------------------------------------
--- Options (Game Menu > Options > AddOns > Farm Counter)
+-- Options (Game Menu > Options > AddOns > Farm Counter & Value)
 -- -----------------------------------------------------------------------------
--- Price sources offered in the dropdown; any other TSM custom price can be set via /farmcounter price.
+-- Price sources offered in the dropdown; any other TSM custom price can be set via /fcv price.
 local PRICE_SOURCE_OPTIONS = {
     { "DBMarket", "AuctionDB - Market Value" },
     { "DBMinBuyout", "AuctionDB - Minimum Buyout" },
@@ -1256,7 +1258,7 @@ end
 
 local function AddCheckbox(category, variableTbl, key, name, tooltip, defaultValue, onChanged)
     local setting = Settings.RegisterAddOnSetting(category,
-        "FarmCounter_" .. key, -- unique name
+        "FarmCounterValue_" .. key, -- unique name
         key, -- key in variableTbl
         variableTbl,
         Settings.VarType.Boolean,
@@ -1274,8 +1276,8 @@ local function CreateSettings()
         return
     end
 
-    local settings = FarmCounterDB.settings
-    local category, layout = Settings.RegisterVerticalLayoutCategory("Farm Counter")
+    local settings = FarmCounterValueDB.settings
+    local category, layout = Settings.RegisterVerticalLayoutCategory("Farm Counter & Value")
 
     local function Redraw()
         UpdateDisplay(false)
@@ -1291,13 +1293,13 @@ local function CreateSettings()
     AddCheckbox(category, settings, "countAllFishingLoot", "Count all fishing loot",
         "Also counts junk, treasures and other non-profession items from fishing casts.", true)
     AddCheckbox(category, settings, "zoneReset", "New auto session in a new zone",
-        "Sessions without /farmcounter start end when you loot in a different zone. The old session stays available in the session dropdown.", true)
+        "Sessions without /fcv start end when you loot in a different zone. The old session stays available in the session dropdown.", true)
 
     AddSectionHeader(layout, "Prices")
     local CreateDropdown = Settings.CreateDropdown or Settings.CreateDropDown
     if CreateDropdown and Settings.CreateControlTextContainer then
         local priceSetting = Settings.RegisterAddOnSetting(category,
-            "FarmCounter_priceSource",
+            "FarmCounterValue_priceSource",
             "priceSource",
             settings,
             Settings.VarType.String,
@@ -1317,7 +1319,7 @@ local function CreateSettings()
             return container:GetData()
         end
         CreateDropdown(category, priceSetting, GetPriceSourceOptions,
-            "TradeSkillMaster price used for the values. Other TSM custom prices can be set with /farmcounter price <custom price>.")
+            "TradeSkillMaster price used for the values. Other TSM custom prices can be set with /fcv price <custom price>.")
         priceSetting:SetValueChangedCallback(function()
             ClearPriceCache()
             Redraw()
@@ -1327,7 +1329,7 @@ local function CreateSettings()
     AddSectionHeader(layout, "Categories")
     for _, key in ipairs(CATEGORY_ORDER) do
         local setting = Settings.RegisterAddOnSetting(category,
-            "FarmCounter_Category_" .. key,
+            "FarmCounterValue_Category_" .. key,
             key,
             settings.categories,
             Settings.VarType.Boolean,
@@ -1348,7 +1350,7 @@ local function CreateSettings()
         end)
     if Settings.CreateSlider and Settings.CreateSliderOptions then
         local delaySetting = Settings.RegisterAddOnSetting(category,
-            "FarmCounter_autoHideMinutes",
+            "FarmCounterValue_autoHideMinutes",
             "autoHideMinutes",
             settings,
             Settings.VarType.Number,
@@ -1366,7 +1368,7 @@ local function CreateSettings()
         layout:AddInitializer(CreateSettingsButtonInitializer("Window", "Show window", function()
             settings.hidden = false
             UpdateDisplay(true)
-        end, "Shows the Farm Counter window again after closing it.", true))
+        end, "Shows the Farm Counter & Value window again after closing it.", true))
     end
 
     Settings.RegisterAddOnCategory(category)
@@ -1382,8 +1384,8 @@ end
 -- -----------------------------------------------------------------------------
 -- Slash Commands
 -- -----------------------------------------------------------------------------
-SLASH_FARMCOUNTER1 = "/farmcounter"
-SLASH_FARMCOUNTER2 = "/farm"
+SLASH_FARMCOUNTERVALUE1 = "/farmcountervalue"
+SLASH_FARMCOUNTERVALUE2 = "/fcv"
 
 local function ParseOnOff(arg, current)
     if arg == "" then
@@ -1396,10 +1398,10 @@ local function ParseOnOff(arg, current)
     return nil
 end
 
-SlashCmdList.FARMCOUNTER = function(msg)
+SlashCmdList.FARMCOUNTERVALUE = function(msg)
     -- Should already exist after ADDON_LOADED, but keep this robust in case the user
     -- runs slash commands very early or saved variables were partially wiped.
-    if not FarmCounterDB or not FarmCounterDB.settings then
+    if not FarmCounterValueDB or not FarmCounterValueDB.settings then
         ApplyDefaults()
     end
 
@@ -1412,33 +1414,33 @@ SlashCmdList.FARMCOUNTER = function(msg)
     local rawArg = msg:match("^%s*%S+%s*(.-)%s*$") or ""
 
     if cmd == "" or cmd == "help" or cmd == "?" then
-        Print("--- Farm Counter ---")
-        Print("/farmcounter show - Shows the addon window.")
-        Print("/farmcounter session - Switch to Session Mode.")
-        Print("/farmcounter history - Switch to History Mode (global).")
-        Print("/farmcounter start - Starts a new farming session (no zone auto-reset).")
-        Print("/farmcounter stop - Ends the current session (history keeps counting).")
-        Print("/farmcounter reset - Resets the current session data.")
-        Print("/farmcounter view [current|history|1-" .. MAX_ARCHIVED_SESSIONS .. "] - Lists or shows previous sessions (also via the dropdown).")
-        Print("/farmcounter price [source|default] - Shows or sets the TSM price source (default: " .. DEFAULT_PRICE_SOURCE .. ").")
-        Print("/farmcounter cat [key] [on|off] - Lists or toggles counted categories.")
-        Print("/farmcounter fishing [on|off] - Count all fishing loot, incl. junk (default on).")
-        Print("/farmcounter zonereset [on|off] - Auto sessions reset in a new zone (default on).")
-        Print("/farmcounter sound [on|off] - Toggles sound alerts (or sets explicitly).")
-        Print("/farmcounter sound blue [on|off] - Sound for rare (blue) items (epic always plays).")
-        Print("/farmcounter options - Opens the options.")
-        Print("/farmcounter hide (or /farmcounter exit) - Hides the addon window.")
+        Print("--- Farm Counter & Value ---")
+        Print("/fcv show - Shows the addon window.")
+        Print("/fcv session - Switch to Session Mode.")
+        Print("/fcv history - Switch to History Mode (global).")
+        Print("/fcv start - Starts a new farming session (no zone auto-reset).")
+        Print("/fcv stop - Ends the current session (history keeps counting).")
+        Print("/fcv reset - Resets the current session data.")
+        Print("/fcv view [current|history|1-" .. MAX_ARCHIVED_SESSIONS .. "] - Lists or shows previous sessions (also via the dropdown).")
+        Print("/fcv price [source|default] - Shows or sets the TSM price source (default: " .. DEFAULT_PRICE_SOURCE .. ").")
+        Print("/fcv cat [key] [on|off] - Lists or toggles counted categories.")
+        Print("/fcv fishing [on|off] - Count all fishing loot, incl. junk (default on).")
+        Print("/fcv zonereset [on|off] - Auto sessions reset in a new zone (default on).")
+        Print("/fcv sound [on|off] - Toggles sound alerts (or sets explicitly).")
+        Print("/fcv sound blue [on|off] - Sound for rare (blue) items (epic always plays).")
+        Print("/fcv options - Opens the options.")
+        Print("/fcv hide (or /fcv exit) - Hides the addon window.")
         return
     end
 
     if cmd == "show" then
-        FarmCounterDB.settings.hidden = false
+        FarmCounterValueDB.settings.hidden = false
         UpdateDisplay(true)
         return
     end
 
     if cmd == "hide" or cmd == "exit" then
-        FarmCounterDB.settings.hidden = true
+        FarmCounterValueDB.settings.hidden = true
         frame:Hide()
         Print("Hiding window. Data will continue tracking in the background.")
         return
@@ -1455,7 +1457,7 @@ SlashCmdList.FARMCOUNTER = function(msg)
     end
 
     if cmd == "view" then
-        local archive = FarmCounterDB.sessionHistory
+        local archive = FarmCounterValueDB.sessionHistory
         local index = tonumber(arg)
         if arg == "" then
             Print("Current session: " .. GetSessionLabel(GetSession()))
@@ -1471,14 +1473,14 @@ SlashCmdList.FARMCOUNTER = function(msg)
         elseif index and archive[index] then
             SelectView("session", archive[index])
         else
-            Print("Usage: /farmcounter view [current|history|1-" .. MAX_ARCHIVED_SESSIONS .. "]")
+            Print("Usage: /fcv view [current|history|1-" .. MAX_ARCHIVED_SESSIONS .. "]")
         end
         return
     end
 
     if cmd == "start" then
         ReplaceSession("running")
-        FarmCounterDB.session.zone = GetCurrentZoneName()
+        FarmCounterValueDB.session.zone = GetCurrentZoneName()
         Print("Session started.")
         SelectView("session", nil)
         return
@@ -1487,7 +1489,7 @@ SlashCmdList.FARMCOUNTER = function(msg)
     if cmd == "stop" then
         local session = GetSession()
         if session.state == "stopped" then
-            Print("No session running. Use /farmcounter start to start one.")
+            Print("No session running. Use /fcv start to start one.")
             return
         end
         session.state = "stopped"
@@ -1500,11 +1502,11 @@ SlashCmdList.FARMCOUNTER = function(msg)
     if cmd == "reset" then
         local state = GetSession().state
         ReplaceSession(state == "running" and "running" or "auto")
-        FarmCounterDB.session.zone = GetCurrentZoneName()
+        FarmCounterValueDB.session.zone = GetCurrentZoneName()
         viewedSession = nil
         Print("Session reset. The previous one is in the session dropdown.")
-        if (FarmCounterDB.settings.mode or "session") == "session" then
-            FarmCounterDB.settings.hidden = false
+        if (FarmCounterValueDB.settings.mode or "session") == "session" then
+            FarmCounterValueDB.settings.hidden = false
             UpdateDisplay(true)
         end
         return
@@ -1512,7 +1514,7 @@ SlashCmdList.FARMCOUNTER = function(msg)
 
     if cmd == "price" then
         if rawArg == "" then
-            Print("Price source: " .. FarmCounterDB.settings.priceSource
+            Print("Price source: " .. FarmCounterValueDB.settings.priceSource
                 .. (IsTSMAvailable() and "" or " (TSM not loaded)"))
             return
         end
@@ -1532,7 +1534,7 @@ SlashCmdList.FARMCOUNTER = function(msg)
             Print("TSM not loaded - price source saved without validation.")
         end
 
-        FarmCounterDB.settings.priceSource = source
+        FarmCounterValueDB.settings.priceSource = source
         ClearPriceCache()
         Print("Price source: " .. source)
         UpdateDisplay(false)
@@ -1549,38 +1551,38 @@ SlashCmdList.FARMCOUNTER = function(msg)
             return
         end
         if not CATEGORY_LABELS[key] then
-            Print("Unknown category \"" .. key .. "\". Type /farmcounter cat for a list.")
+            Print("Unknown category \"" .. key .. "\". Type /fcv cat for a list.")
             return
         end
         local enabled = ParseOnOff(state, IsCategoryEnabled(key))
         if enabled == nil then
-            Print("Usage: /farmcounter cat <key> [on|off]")
+            Print("Usage: /fcv cat <key> [on|off]")
             return
         end
-        FarmCounterDB.settings.categories[key] = enabled
+        FarmCounterValueDB.settings.categories[key] = enabled
         Print(CATEGORY_LABELS[key] .. ": " .. (enabled and "ON" or "OFF"))
         UpdateDisplay(false)
         return
     end
 
     if cmd == "fishing" then
-        local enabled = ParseOnOff(arg, FarmCounterDB.settings.countAllFishingLoot)
+        local enabled = ParseOnOff(arg, FarmCounterValueDB.settings.countAllFishingLoot)
         if enabled == nil then
-            Print("Usage: /farmcounter fishing [on|off]")
+            Print("Usage: /fcv fishing [on|off]")
             return
         end
-        FarmCounterDB.settings.countAllFishingLoot = enabled
+        FarmCounterValueDB.settings.countAllFishingLoot = enabled
         Print("Count all fishing loot: " .. (enabled and "ON" or "OFF"))
         return
     end
 
     if cmd == "zonereset" then
-        local enabled = ParseOnOff(arg, FarmCounterDB.settings.zoneReset)
+        local enabled = ParseOnOff(arg, FarmCounterValueDB.settings.zoneReset)
         if enabled == nil then
-            Print("Usage: /farmcounter zonereset [on|off]")
+            Print("Usage: /fcv zonereset [on|off]")
             return
         end
-        FarmCounterDB.settings.zoneReset = enabled
+        FarmCounterValueDB.settings.zoneReset = enabled
         Print("Auto session zone reset: " .. (enabled and "ON" or "OFF"))
         return
     end
@@ -1588,24 +1590,24 @@ SlashCmdList.FARMCOUNTER = function(msg)
     if cmd == "sound" then
         local blueArg = arg:match("^blue%s*(.-)$")
         if blueArg then
-            local enabled = ParseOnOff(blueArg, FarmCounterDB.settings.playBlueSound)
+            local enabled = ParseOnOff(blueArg, FarmCounterValueDB.settings.playBlueSound)
             if enabled == nil then
-                Print("Usage: /farmcounter sound blue [on|off]")
+                Print("Usage: /fcv sound blue [on|off]")
                 return
             end
-            FarmCounterDB.settings.playBlueSound = enabled
+            FarmCounterValueDB.settings.playBlueSound = enabled
             Print("Sound for rare (blue) items: " .. (enabled and "ON" or "OFF"))
             return
         end
 
-        local enabled = ParseOnOff(arg, FarmCounterDB.settings.playRareSound)
+        local enabled = ParseOnOff(arg, FarmCounterValueDB.settings.playRareSound)
         if enabled == nil then
-            Print("Usage: /farmcounter sound [on|off] or /farmcounter sound blue [on|off]")
+            Print("Usage: /fcv sound [on|off] or /fcv sound blue [on|off]")
             return
         end
-        FarmCounterDB.settings.playRareSound = enabled
+        FarmCounterValueDB.settings.playRareSound = enabled
 
-        Print("Sound alerts: " .. (FarmCounterDB.settings.playRareSound and "ON" or "OFF"))
+        Print("Sound alerts: " .. (FarmCounterValueDB.settings.playRareSound and "ON" or "OFF"))
         return
     end
 
@@ -1614,7 +1616,7 @@ SlashCmdList.FARMCOUNTER = function(msg)
         return
     end
 
-    Print("Unknown command. Type /farmcounter for help.")
+    Print("Unknown command. Type /fcv for help.")
 end
 
 -- -----------------------------------------------------------------------------
@@ -1635,12 +1637,12 @@ eventFrame:SetScript("OnEvent", function(_, event, ...)
         end
 
         ApplyDefaults()
-        FarmCounterDB.dbVersion = DB_VERSION
-        FarmCounterDB.version = ADDON_VERSION
+        FarmCounterValueDB.dbVersion = DB_VERSION
+        FarmCounterValueDB.version = ADDON_VERSION
 
         -- Auto sessions survive a /reload but end after 30 minutes without loot; the old one goes
-        -- to the session dropdown. Started (/farmcounter start) and stopped sessions always survive.
-        local session = FarmCounterDB.session
+        -- to the session dropdown. Started (/fcv start) and stopped sessions always survive.
+        local session = FarmCounterValueDB.session
         if session.state == "auto"
             and (time() - (session.lastLootTime or session.startTime or 0)) > AUTO_SESSION_IDLE_TIMEOUT then
             ReplaceSession("auto")
