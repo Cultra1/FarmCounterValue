@@ -1,0 +1,21 @@
+## Interface: 120105
+## Title: Farm Counter
+## Notes: Tracks fishing & profession loot and displays session & global history stats with TSM auction values.
+## IconTexture: Interface\AddOns\FarmCounter\Media\FarmCounter_Icon
+## Category: Professions
+## Category-deDE: Berufe
+## Category-esES: Profesiones
+## Category-esMX: Profesiones
+## Category-frFR: Métiers
+## Category-itIT: Professioni
+## Category-koKR: 전문 기술
+## Category-ptBR: Profissões
+## Category-ruRU: Профессии
+## Category-zhCN: 专业
+## Category-zhTW: 專業
+## Author: Joschua
+## Version: @project-version@
+## OptionalDeps: TradeSkillMaster
+## SavedVariables: FarmCounterDB
+
+FarmCounter.lua
